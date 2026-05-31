@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CookMate</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="background"></div>
+
+    <div class="app">
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">🍳</div>
+                <div>
+                    <h1>CookMate</h1>
+                    <p>Des recettes à partir de votre frigo</p>
+                </div>
+            </div>
+
+            <div class="ingredient-form">
+                <input type="text" id="ingredientInput" placeholder="Ex: Tomates, Mozzarella, Riz...">
+                <button onclick="addIngredient()">+ Ajouter un ingrédient</button>
+            </div>
+
+            <div class="ingredients-list" id="ingredientsList"></div>
+        </aside>
+
+        <main class="main">
+            <div class="main-header">
+                <div>
+                    <h2>Générateur de recettes IA</h2>
+                    <p>Trouvez des idées de repas simples avec les ingrédients disponibles.</p>
+                </div>
+
+                <button class="generate-button" onclick="generateRecipes()">
+                    Générer une recette
+                </button>
+            </div>
+
+            <section class="recipe-output" id="recipeOutput">
+                <div class="placeholder">
+                    <h3>🍽️ Votre recette apparaîtra ici</h3>
+                    <p>
+                        Ajoutez quelques ingrédients dans la colonne de gauche puis générez une recette.
+                        Parce que regarder un frigo vide pendant 15 minutes n’a jamais nourri personne.
+                    </p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const ingredients = [];
+        const BACKEND_URL = "http://127.0.0.1:8000";
+
+        const sampleRecipes = [
+            {
+                title: 'Omelette gourmande au fromage',
+                time: '15 min',
+                level: 'Facile',
+                description: 'Une recette rapide et ultra réconfortante parfaite pour utiliser les ingrédients du quotidien.',
+                steps: [
+                    'Battez les œufs dans un saladier avec du sel et du poivre.',
+                    'Faites revenir les ingrédients dans une poêle chaude.',
+                    'Ajoutez les œufs puis le fromage.',
+                    'Laissez cuire quelques minutes avant de servir chaud.'
+                ]
+            },
+            {
+                title: 'Poêlée maison croustillante',
+                time: '25 min',
+                level: 'Moyen',
+                description: 'Un mélange généreux d’ingrédients dorés à la poêle avec une texture croustillante.',
+                steps: [
+                    'Découpez tous les ingrédients en petits morceaux.',
+                    'Faites revenir le tout dans une grande poêle avec un filet d’huile.',
+                    'Ajoutez des herbes et laissez dorer.',
+                    'Servez chaud avec une sauce légère.'
+                ]
+            },
+            {
+                title: 'Gratin rapide du frigo',
+                time: '35 min',
+                level: 'Très facile',
+                description: 'Le genre de plat qui sauve les soirs de flemme et les légumes oubliés.',
+                steps: [
+                    'Préchauffez le four à 180°C.',
+                    'Disposez les ingrédients dans un plat à gratin.',
+                    'Ajoutez de la crème et du fromage.',
+                    'Enfournez pendant 25 minutes jusqu’à obtenir une belle croûte dorée.'
+                ]
+            }
+        ];
+
+        function renderIngredients() {
+            const list = document.getElementById('ingredientsList');
+            list.innerHTML = '';
+
+            ingredients.forEach((ingredient, index) => {
+                const item = document.createElement('div');
+                item.className = 'ingredient-item';
+
+                item.innerHTML = `
+                    <span>${ingredient}</span>
+                    <button onclick="removeIngredient(${index})">✕</button>
+                `;
+
+                list.appendChild(item);
+            });
+        }
+
+        function addIngredient() {
+            const input = document.getElementById('ingredientInput');
+            const value = input.value.trim();
+
+            if (!value) return;
+
+            ingredients.push(value);
+            input.value = '';
+
+            renderIngredients();
+        }
+
+        function removeIngredient(index) {
+            ingredients.splice(index, 1);
+            renderIngredients();
+        }
+
+        async function generateRecipes() {
+            const output = document.getElementById('recipeOutput');
+            const button = document.querySelector('.generate-button');
+
+            if (ingredients.length === 0) {
+                output.innerHTML = `
+                    <div class="placeholder">
+                        <h3>🥲 Aucun ingrédient</h3>
+                        <p>
+                            Ajoutez au moins un ingrédient avant de générer une recette.
+                            Même une intelligence artificielle ne cuisine pas avec le vide intersidéral.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Disable button during loading (better UX)
+            button.disabled = true;
+            button.style.opacity = "0.6";
+            button.innerText = "Génération...";
+
+            // Loading state
+            output.innerHTML = `
+                <div class="placeholder">
+                    <h3>⏳ Génération en cours...</h3>
+                    <p>L'IA est en train de transformer votre frigo en chef étoilé...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/generate`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        ingredients: ingredients
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Erreur serveur");
+                }
+
+                const data = await response.json();
+
+                output.innerHTML = `
+                    <div class="recipe-card">
+                        <div class="recipe-meta">
+                            <div class="recipe-badge">🧊 ${ingredients.join(', ')}</div>
+                            <div class="recipe-badge">🤖 IA</div>
+                        </div>
+
+                        <h3>Votre recette IA</h3>
+
+                        <p style="white-space: pre-line;">${data.recipe}</p>
+                    </div>
+                `;
+
+            } catch (error) {
+                output.innerHTML = `
+                    <div class="placeholder">
+                        <h3>⚠️ Erreur</h3>
+                        <p>
+                            Impossible de contacter le serveur IA. Vérifiez que le backend est bien en ligne.
+                        </p>
+                    </div>
+                `;
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.style.opacity = "1";
+                button.innerText = "Générer une recette";
+            }
+        }
+
+        document.getElementById('ingredientInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addIngredient();
+            }
+        });
+    </script>
+</body>
+</html>
